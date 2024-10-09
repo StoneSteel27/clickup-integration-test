@@ -52,11 +52,36 @@ jobs:
           def get_clickup_task_id(issue_number):
               url = f"https://api.clickup.com/api/v2/list/{clickup_list_id}/task"
               headers = {"Authorization": clickup_api_key}
-              params = {"custom_fields": json.dumps([{"field_id": "github_issue", "value": str(issue_number)}])}
-              response = requests.get(url, headers=headers, params=params)
-              tasks = response.json().get('tasks', [])
-              print(tasks)
-              return tasks[0]['id'] if tasks else None
+              params = {
+                  "include_closed": True,
+                  "subtasks": True,
+                  "page": 0
+              }
+              
+              all_tasks = []
+              while True:
+                  response = requests.get(url, headers=headers, params=params)
+                  if response.status_code != 200:
+                      print(f"Error fetching tasks: {response.status_code}")
+                      return None
+                  
+                  data = response.json()
+                  tasks = data.get('tasks', [])
+                  all_tasks.extend(tasks)
+                  
+                  if len(tasks) < 100:  # Less than 100 tasks returned, we've reached the end
+                      break
+                  
+                  params['page'] += 1  # Move to the next page
+              
+              # Filter tasks to find the one with matching GitHub issue number
+              for task in all_tasks:
+                  custom_fields = task.get('custom_fields', [])
+                  for field in custom_fields:
+                      if field.get('name') == 'GitHub Issue' and field.get('value') == str(issue_number):
+                          return task['id']
+              
+              return None
 
           def create_clickup_task(issue):
               url = f"https://api.clickup.com/api/v2/list/{clickup_list_id}/task"
