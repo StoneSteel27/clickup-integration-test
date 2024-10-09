@@ -84,40 +84,38 @@ jobs:
               
               return None
 
-          def create_clickup_task(issue):
+          def get_clickup_task_id(issue_number):
               url = f"https://api.clickup.com/api/v2/list/{clickup_list_id}/task"
-              headers = {
-                  "Content-Type": "application/json",
-                  "Authorization": clickup_api_key
-              }
-              assignee_id = github_clickup_mapping.get(issue['user']['login'])
-              due_date = int(datetime.strptime(issue['created_at'], "%Y-%m-%dT%H:%M:%SZ").timestamp() * 1000)
-              
-              payload = {
-                  "name": issue['title'],
-                  "description": issue['body'],
-                  "markdown_description": issue['body'],
-                  "assignees": [int(assignee_id)] if assignee_id else [],
-                  "status": "Open",
-                  "priority": 3,  # Normal priority
-                  "due_date": due_date,
-                  "due_date_time": False,
-                  "notify_all": True,
-                  "custom_fields": [
-                      {
-                          "id": "caa4e143-16cf-462a-8be8-5429681df51e",  # Replace with your actual custom field ID
-                          "value": str(issue['number'])
-                      }
-                  ]
+              headers = {"Authorization": clickup_api_key}
+              params = {
+                  "include_closed": True,
+                  "subtasks": True,
+                  "page": 0
               }
               
-              query = {
-                  "custom_task_ids": "true",
-                  "team_id": clickup_team_id
-              }
+              while True:
+                  response = requests.get(url, headers=headers, params=params)
+                  if response.status_code != 200:
+                      print(f"Error fetching tasks: {response.status_code}")
+                      return None
+                  
+                  data = response.json()
+                  tasks = data.get('tasks', [])
+                  
+                  # Search for the task with matching GitHub issue number
+                  for task in tasks:
+                      custom_fields = task.get('custom_fields', [])
+                      for field in custom_fields:
+                          if field.get('name') == 'github_issue' and field.get('value') == str(issue_number):
+                              return task['id']
+                  
+                  # Check if we've reached the last page
+                  if data.get('last_page', False):
+                      break
+                  
+                  params['page'] += 1  # Move to the next page
               
-              response = requests.post(url, json=payload, headers=headers, params=query)
-              return response.json()
+              return None  # No matching task found
 
           def update_clickup_task(task_id, issue):
               url = f"https://api.clickup.com/api/v2/task/{task_id}"
