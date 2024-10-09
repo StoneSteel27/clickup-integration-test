@@ -69,6 +69,8 @@ jobs:
                   "custom_fields": [{"id": "github_issue", "value": str(issue['number'])}]
               }
               response = requests.post(url, headers=headers, json=data)
+              print("status code:",response.status_code)
+              print(response.content)
               return response.json()
           
           def update_clickup_task(task_id, issue):
