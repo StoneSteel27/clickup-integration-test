@@ -29,7 +29,7 @@ jobs:
           CLICKUP_API_KEY: ${{ secrets.CLICKUP_API_KEY }}
           CLICKUP_LIST_ID: ${{ secrets.CLICKUP_LIST_ID }}
           CLICKUP_TEAM_ID: ${{ secrets.CLICKUP_TEAM_ID }}
-          GITHUB_CLICKUP_MAPPING: ${{ secrets.GITHUB_CLICKUP_MAPPING }}
+          GITHUB_CLICKUP_MAPPING: ${{ secrets.CLICKUP_MAPPING }}
         run: |
           python - <<EOF
           import os
@@ -41,7 +41,7 @@ jobs:
           clickup_api_key = os.environ['CLICKUP_API_KEY']
           clickup_list_id = os.environ['CLICKUP_LIST_ID']
           clickup_team_id = os.environ['CLICKUP_TEAM_ID']
-          github_clickup_mapping = json.loads(os.environ['CLICKUP_MAPPING'])
+          github_clickup_mapping = json.loads(os.environ['GITHUB_CLICKUP_MAPPING'])
 
           def get_github_issue():
               event_path = os.environ['GITHUB_EVENT_PATH']
