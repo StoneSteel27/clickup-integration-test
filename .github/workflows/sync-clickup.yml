@@ -66,6 +66,7 @@ jobs:
                       return None
                   
                   data = response.json()
+                  print(data)
                   tasks = data.get('tasks', [])
                   all_tasks.extend(tasks)
                   
