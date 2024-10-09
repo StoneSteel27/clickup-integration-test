@@ -78,7 +78,7 @@ jobs:
                   "notify_all": True,
                   "custom_fields": [
                       {
-                          "id": "github_issue",  # Replace with your actual custom field ID
+                          "id": "caa4e143-16cf-462a-8be8-5429681df51e",  # Replace with your actual custom field ID
                           "value": str(issue['number'])
                       }
                   ]
