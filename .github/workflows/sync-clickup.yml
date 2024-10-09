@@ -91,7 +91,6 @@ jobs:
               }
               
               response = requests.post(url, json=payload, headers=headers, params=query)
-              print(response.content)
               return response.json()
 
           def update_clickup_task(task_id, issue):
