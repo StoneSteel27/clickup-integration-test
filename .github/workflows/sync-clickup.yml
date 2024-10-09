@@ -1,0 +1,103 @@
+name: Sync GitHub Projects with ClickUp
+
+on:
+  issues:
+    types: [opened, edited, deleted, transferred, closed, reopened]
+  project_card:
+    types: [created, moved]
+
+jobs:
+  sync-with-clickup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Sync with ClickUp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLICKUP_API_KEY: ${{ secrets.CLICKUP_API_KEY }}
+          CLICKUP_LIST_ID: ${{ secrets.CLICKUP_LIST_ID }}
+          GITHUB_CLICKUP_MAPPING: ${{ secrets.GITHUB_CLICKUP_MAPPING }}
+        run: |
+          python - <<EOF
+          import os
+          import json
+          import requests
+          
+          github_token = os.environ['GITHUB_TOKEN']
+          clickup_api_key = os.environ['CLICKUP_API_KEY']
+          clickup_list_id = os.environ['CLICKUP_LIST_ID']
+          github_clickup_mapping = json.loads(os.environ['GITHUB_CLICKUP_MAPPING'])
+          
+          def get_github_issue():
+              event_path = os.environ['GITHUB_EVENT_PATH']
+              with open(event_path, 'r') as f:
+                  event_data = json.load(f)
+              return event_data['issue']
+          
+          def get_clickup_task_id(issue_number):
+              url = f"https://api.clickup.com/api/v2/list/{clickup_list_id}/task"
+              headers = {"Authorization": clickup_api_key}
+              params = {"custom_fields": json.dumps([{"field_id": "github_issue", "value": str(issue_number)}])}
+              response = requests.get(url, headers=headers, params=params)
+              tasks = response.json().get('tasks', [])
+              return tasks[0]['id'] if tasks else None
+          
+          def create_clickup_task(issue):
+              url = f"https://api.clickup.com/api/v2/list/{clickup_list_id}/task"
+              headers = {
+                  "Authorization": clickup_api_key,
+                  "Content-Type": "application/json"
+              }
+              assignee_id = github_clickup_mapping.get(issue['user']['login'])
+              data = {
+                  "name": issue['title'],
+                  "description": issue['body'],
+                  "status": "Open",
+                  "assignees": [assignee_id] if assignee_id else [],
+                  "custom_fields": [{"id": "github_issue", "value": str(issue['number'])}]
+              }
+              response = requests.post(url, headers=headers, json=data)
+              return response.json()
+          
+          def update_clickup_task(task_id, issue):
+              url = f"https://api.clickup.com/api/v2/task/{task_id}"
+              headers = {
+                  "Authorization": clickup_api_key,
+                  "Content-Type": "application/json"
+              }
+              assignee_id = github_clickup_mapping.get(issue['user']['login'])
+              data = {
+                  "name": issue['title'],
+                  "description": issue['body'],
+                  "status": "Closed" if issue['state'] == 'closed' else "Open",
+                  "assignees": {"add": [assignee_id]} if assignee_id else {}
+              }
+              response = requests.put(url, headers=headers, json=data)
+              return response.json()
+          
+          def main():
+              issue = get_github_issue()
+              clickup_task_id = get_clickup_task_id(issue['number'])
+              
+              if clickup_task_id:
+                  print(f"Updating existing ClickUp task: {clickup_task_id}")
+                  update_clickup_task(clickup_task_id, issue)
+              else:
+                  print("Creating new ClickUp task")
+                  create_clickup_task(issue)
+          
+          if __name__ == "__main__":
+              main()
+          EOF
