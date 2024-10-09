@@ -55,6 +55,7 @@ jobs:
               params = {"custom_fields": json.dumps([{"field_id": "github_issue", "value": str(issue_number)}])}
               response = requests.get(url, headers=headers, params=params)
               tasks = response.json().get('tasks', [])
+              print(tasks)
               return tasks[0]['id'] if tasks else None
 
           def create_clickup_task(issue):
